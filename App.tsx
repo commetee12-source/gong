@@ -70,41 +70,57 @@ const App: React.FC = () => {
   };
 
   const downloadReport = async (format: 'md' | 'docx' | 'pdf') => {
-    setIsDownloadMenuOpen(false);
-    
-    if (format === 'md') {
-      const element = document.createElement("a");
-      const file = new Blob([generatedOutput], {type: 'text/markdown'});
-      element.href = URL.createObjectURL(file);
-      element.download = getFilename('md');
-      document.body.appendChild(element);
-      element.click();
-      document.body.removeChild(element);
-    } else if (format === 'pdf') {
-      // PDF Generation
-      const htmlContent = marked.parse(generatedOutput) as string;
-      const container = document.createElement('div');
-      container.innerHTML = `<div style="padding: 20px; font-family: 'Malgun Gothic', sans-serif; font-size: 14px; line-height: 1.6;">${htmlContent}</div>`;
-      
-      const opt = {
-        margin:       10,
-        filename:     getFilename('pdf'),
-        image:        { type: 'jpeg', quality: 0.98 },
-        html2canvas:  { scale: 2 },
-        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
-      };
+    if (!generatedOutput || generatedOutput.trim() === '') {
+      alert("다운로드할 내용이 없습니다. 먼저 문서를 생성해 주세요.");
+      return;
+    }
 
-      try {
-          await html2pdf().set(opt).from(container).save();
-      } catch (e) {
-          console.error("PDF generation failed", e);
-          alert("PDF 생성에 실패했습니다. Markdown 다운로드를 이용해주세요.");
-      }
-    } else if (format === 'docx') {
-      // DOCX Generation
-      try {
-        const htmlContent = marked.parse(generatedOutput) as string;
-        // Add basic styling for Word
+    // Close menu after a short delay to ensure click is processed
+    setTimeout(() => setIsDownloadMenuOpen(false), 100);
+
+    try {
+      const filename = getFilename(format);
+      const htmlContent = marked.parse(generatedOutput) as string;
+      
+      if (format === 'md') {
+        const blob = new Blob([generatedOutput], { type: 'text/markdown;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.style.display = 'none';
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        setTimeout(() => {
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
+        }, 1000);
+      } else if (format === 'pdf') {
+        // PDF Generation
+        const container = document.createElement('div');
+        container.innerHTML = `
+          <div style="padding: 40px; font-family: 'Malgun Gothic', 'Pretendard', sans-serif; font-size: 11pt; line-height: 1.6; color: #333;">
+            ${htmlContent}
+          </div>
+        `;
+        
+        const opt = {
+          margin: 15,
+          filename: filename,
+          image: { type: 'jpeg', quality: 0.98 },
+          html2canvas: { scale: 2, useCORS: true, logging: false },
+          jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        };
+
+        const html2pdfLib = (html2pdf as any).default || html2pdf;
+        
+        if (typeof html2pdfLib === 'function') {
+          await html2pdfLib().set(opt).from(container).save();
+        } else {
+          throw new Error("PDF 라이브러리를 찾을 수 없습니다.");
+        }
+      } else if (format === 'docx') {
+        // DOCX Generation
         const styledHtml = `
             <!DOCTYPE html>
             <html>
@@ -112,31 +128,37 @@ const App: React.FC = () => {
             <meta charset="utf-8">
             <style>
                 body { font-family: 'Malgun Gothic', 'Pretendard', sans-serif; font-size: 11pt; line-height: 1.6; }
-                h1 { font-size: 16pt; font-weight: bold; margin-top: 20px; }
-                h2 { font-size: 14pt; font-weight: bold; margin-top: 15px; }
-                p { margin-bottom: 10px; }
+                h1 { font-size: 18pt; font-weight: bold; margin-top: 24px; margin-bottom: 12px; border-bottom: 1px solid #eee; padding-bottom: 8px; }
+                h2 { font-size: 15pt; font-weight: bold; margin-top: 20px; margin-bottom: 10px; color: #075985; }
+                p { margin-bottom: 10px; text-align: justify; }
+                ul, ol { margin-bottom: 10px; padding-left: 20px; }
+                table { border-collapse: collapse; width: 100%; margin-bottom: 15px; }
+                th, td { border: 1px solid #ccc; padding: 8px; }
+                th { background-color: #f8fafc; }
             </style>
             </head>
-            <body>
-                ${htmlContent}
-            </body>
+            <body>${htmlContent}</body>
             </html>
         `;
         
         const blob = await asBlob(styledHtml);
-        
         if (blob) {
-            const element = document.createElement("a");
-            element.href = URL.createObjectURL(blob as Blob);
-            element.download = getFilename('docx');
-            document.body.appendChild(element);
-            element.click();
-            document.body.removeChild(element);
+            const url = URL.createObjectURL(blob as Blob);
+            const link = document.createElement('a');
+            link.style.display = 'none';
+            link.href = url;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            setTimeout(() => {
+              document.body.removeChild(link);
+              URL.revokeObjectURL(url);
+            }, 1000);
         }
-      } catch (e) {
-          console.error("DOCX generation failed", e);
-          alert("DOCX 생성에 실패했습니다. Markdown 다운로드를 이용해주세요.");
       }
+    } catch (error) {
+      console.error(`${format} download error:`, error);
+      alert(`${format.toUpperCase()} 다운로드 중 오류가 발생했습니다. Markdown 다운로드를 시도해 보세요.`);
     }
   };
 

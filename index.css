@@ -1,0 +1,23 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Pretendard", "Malgun Gothic", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Batang", serif;
+  
+  --color-admin-50: #f0f9ff;
+  --color-admin-100: #e0f2fe;
+  --color-admin-200: #bae6fd;
+  --color-admin-300: #7dd3fc;
+  --color-admin-400: #38bdf8;
+  --color-admin-500: #0ea5e9;
+  --color-admin-600: #0284c7;
+  --color-admin-700: #0369a1;
+  --color-admin-800: #075985;
+  --color-admin-900: #0c4a6e;
+  
+  --color-paper: #f8fafc;
+}
+
+body {
+  @apply bg-slate-100;
+}
